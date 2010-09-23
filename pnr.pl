@@ -52,8 +52,7 @@ my $html_tree = HTML::TreeBuilder->new;    # empty tree
 $html_tree->parse( $mech->content );
 
 ## let's get train info, tricky as table is hard to identify
-my ($train_info_table) = grep
-{
+my ($train_info_table) = grep {
     $_->look_down(
         sub {
             $_[0]->tag eq 'td' && $_[0]->as_text =~ /journey details/sig;
@@ -113,7 +112,7 @@ foreach my $tr (
     }
     elsif ( scalar(@tds) == 1 )
     {
-        $data{chart} = ( $tds[0]->as_text =~ /not/ ) ? CHART_NOT_PREPARED : CHART_PREPARED;
+        $data{chart} = ( $tds[0]->as_text =~ /not/i ) ? CHART_NOT_PREPARED : CHART_PREPARED;
     }
 }
 
@@ -136,11 +135,12 @@ foreach my $tr (
 
     my $seat_pos = $class_struct->{ $data{class} }->{layout}->[ ( $tmp{seat} % $class_struct->{ $data{class} }->{seats_block_size} ) - 1 ] if ( exists( $class_struct->{ $data{class} } ) && $class_struct->{ $data{class} }->{seats_block_size} && $tmp{seat} );
 
-	$_->{raw}->[0] =~ s/Passenger //i;
+    $_->{raw}->[0] =~ s/Passenger //i;
 
     @tmp{qw/p raw seat_pos/} = ( $_->{raw}->[0], $_->{raw}, $seat_pos );
 
     $data{has_seat_pos} = 1 if ($seat_pos);
+    $data{tkt_is_confirmed} = 1 if ( $_->{raw}->[2] =~ /CNF/ );
 
     \%tmp;
 
@@ -154,18 +154,18 @@ my @to_delete;
 push( @to_delete, 1 ) if ( $data{chart} == CHART_PREPARED );
 push( @to_delete, 3 ) unless ( $data{has_seat_pos} );
 push( @to_delete, 4 ) if ( $data{chart} == CHART_NOT_PREPARED );
+push( @to_delete, 2 ) if ( $data{tkt_is_confirmed} );
 
 delete @cols[@to_delete];
-warn @cols;
 
-$t->setCols(grep($_,@cols));
+$t->setCols( grep( $_, @cols ) );
 
 foreach my $p ( @{ $data{passenger_info} } )
 {
     my @t;
     push( @t, $p->{p} );
     push( @t, $p->{raw}->[1] ) if ( $data{chart} == CHART_NOT_PREPARED );
-    push( @t, $p->{raw}->[2] ) if ( $data{chart} == CHART_PREPARED );
+    push( @t, $p->{raw}->[2] ) unless ( $data{tkt_is_confirmed} );
     push( @t, $p->{seat_pos} ) if ( $data{has_seat_pos} );
     push( @t, $p->{coach_position} ) if ( $data{chart} == CHART_PREPARED );
 
@@ -174,4 +174,4 @@ foreach my $p ( @{ $data{passenger_info} } )
 
 print "<pre>$t</pre>";
 
-end_html();
+print end_html();
