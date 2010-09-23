@@ -136,6 +136,8 @@ foreach my $tr (
 
     my $seat_pos = $class_struct->{ $data{class} }->{layout}->[ ( $tmp{seat} % $class_struct->{ $data{class} }->{seats_block_size} ) - 1 ] if ( exists( $class_struct->{ $data{class} } ) && $class_struct->{ $data{class} }->{seats_block_size} && $tmp{seat} );
 
+	$_->{raw}->[0] =~ s/Passenger //i;
+
     @tmp{qw/p raw seat_pos/} = ( $_->{raw}->[0], $_->{raw}, $seat_pos );
 
     $data{has_seat_pos} = 1 if ($seat_pos);
@@ -156,7 +158,7 @@ push( @to_delete, 4 ) if ( $data{chart} == CHART_NOT_PREPARED );
 delete @cols[@to_delete];
 warn @cols;
 
-$t->setCols(@cols);
+$t->setCols(grep($_,@cols));
 
 foreach my $p ( @{ $data{passenger_info} } )
 {
