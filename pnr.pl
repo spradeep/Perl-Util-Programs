@@ -3,8 +3,6 @@
 use strict;
 use WWW::Mechanize;
 use HTML::TreeBuilder;
-use Data::Dumper;
-use Text::ASCIITable;
 use CGI qw(:standard);
 
 use constant {
@@ -65,8 +63,7 @@ my ($train_info_table) = grep {
   );
 
 ## if we have the train info table, grab the required info
-if ( $train_info_table && ref $train_info_table eq 'HTML::Element' )
-{
+if ( $train_info_table && ref $train_info_table eq 'HTML::Element' ) {
     my %train_info;
 
     @train_info{qw/name no dt from to rupto bpoint class/} = map { my $t = $_->as_text; $t =~ s/(^\s+|\s+$)//g; $t; } $train_info_table->look_down(
@@ -104,14 +101,12 @@ foreach my $tr (
 
     next unless (@tds);
 
-    if ( scalar(@tds) >= 3 )
-    {
+    if ( scalar(@tds) >= 3 ) {
         my ( $p, $bs, $cs, $cp ) = map { $_->as_text } @tds;
 
         push( @{ $data{passenger_info} }, { raw => [ $p, $bs, $cs, $cp ] } );
     }
-    elsif ( scalar(@tds) == 1 )
-    {
+    elsif ( scalar(@tds) == 1 ) {
         $data{chart} = ( $tds[0]->as_text =~ /not/i ) ? CHART_NOT_PREPARED : CHART_PREPARED;
     }
 }
@@ -124,54 +119,39 @@ foreach my $tr (
 
     my %tmp;
 
-    if ( $data{chart} == CHART_PREPARED )
-    {
+    if ( $data{chart} == CHART_PREPARED ) {
         @tmp{qw/coach seat coach_position/} = ( @cs_bu, $_->{raw}->[3] );
     }
-    else
-    {
+    else {
         @tmp{qw/coach seat quota/} = @bs_bu;
     }
 
-    my $seat_pos = $class_struct->{ $data{class} }->{layout}->[ ( $tmp{seat} % $class_struct->{ $data{class} }->{seats_block_size} ) - 1 ] if ( exists( $class_struct->{ $data{class} } ) && $class_struct->{ $data{class} }->{seats_block_size} && $tmp{seat} );
+    $data{tkt_is_confirmed} = 1 if ( $_->{raw}->[2] =~ /CNF/ );
+    my $seat_pos;
+
+    if ( $data{tkt_is_confirmed} ) {
+        $seat_pos = $class_struct->{ $data{class} }->{layout}->[ ( $tmp{seat} % $class_struct->{ $data{class} }->{seats_block_size} ) - 1 ] if ( exists( $class_struct->{ $data{class} } ) && $class_struct->{ $data{class} }->{seats_block_size} && $tmp{seat} );
+    }
 
     $_->{raw}->[0] =~ s/Passenger //i;
 
     @tmp{qw/p raw seat_pos/} = ( $_->{raw}->[0], $_->{raw}, $seat_pos );
 
     $data{has_seat_pos} = 1 if ($seat_pos);
-    $data{tkt_is_confirmed} = 1 if ( $_->{raw}->[2] =~ /CNF/ );
 
     \%tmp;
 
 } @{ $data{passenger_info} };
 
-my $t = Text::ASCIITable->new( { headingText => "PNR $pnr" } );
-
-my @cols = ( 'No.', 'Ori. Status', 'Cur. Status', 'Seat', 'Coach Pos' );
-my @to_delete;
-
-push( @to_delete, 1 ) if ( $data{chart} == CHART_PREPARED );
-push( @to_delete, 3 ) unless ( $data{has_seat_pos} );
-push( @to_delete, 4 ) if ( $data{chart} == CHART_NOT_PREPARED );
-push( @to_delete, 2 ) if ( $data{tkt_is_confirmed} );
-
-delete @cols[@to_delete];
-
-$t->setCols( grep( $_, @cols ) );
-
-foreach my $p ( @{ $data{passenger_info} } )
-{
-    my @t;
-    push( @t, $p->{p} );
-    push( @t, $p->{raw}->[1] ) if ( $data{chart} == CHART_NOT_PREPARED );
-    push( @t, $p->{raw}->[2] ) unless ( $data{tkt_is_confirmed} );
-    push( @t, $p->{seat_pos} ) if ( $data{has_seat_pos} );
-    push( @t, $p->{coach_position} ) if ( $data{chart} == CHART_PREPARED );
-
-    $t->addRow(@t);
+print '<table style="width:100%; border-collapse:collapse; border: #000 1px solid" border=1 bordercolor="#000000"><thead><tr style="background-color:#eee">';
+printf( '<th>%s</th>', $_ ) for ( ( 'No.', 'Ori. Status', 'Cur. Status', 'Seat', 'Coach Pos' ) );
+print '</th></tr></thead><tbody>';
+foreach my $p ( @{ $data{passenger_info} } ) {
+    print '<tr>';
+    printf( '<td>%s</td>', $_ ) for ( ( $p->{p}, $p->{raw}->[1], $p->{raw}->[2], $p->{seat_pos} || 'NA', $p->{coach_position} || 'NA' ) );
+    print '</tr>';
 }
 
-print "<pre>$t</pre>";
+print '</tbody></table>';
 
 print end_html();
