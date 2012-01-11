@@ -56,6 +56,7 @@ if ( defined $options{a} && $options{a} ) {
 
 foreach my $s ( keys %urls ) {
     foreach my $pg_url ( @{ $urls{$s} } ) {
+        warn $pg_url;
         $mech->get($pg_url);
         my $html_tree = HTML::TreeBuilder->new_from_content( $mech->content );
         my @links     = map {
@@ -65,14 +66,15 @@ foreach my $s ( keys %urls ) {
         foreach my $link (@links) {
             $link->attr('title') =~ /(\d+?)\w{2} (\w+) (\d{4})$/;
             my $date = strptime( '%d %B %Y', "$1 $2 $3" );
-
+            warn $link->attr('title') . "== $1 $2 $3";
             $mech->get( $link->attr('href') );
+            warn $mech->uri;
             my $html_tree = HTML::TreeBuilder->new_from_content( $mech->content );
 
-            foreach my $link ( $html_tree->look_down( sub { $_[0]->tag eq 'a' && defined $_[0]->attr('href') && $_[0]->attr('href') =~ /dm\.html/ } ) ) {
+            foreach my $link ( $html_tree->look_down( sub { $_[0]->tag eq 'a' && defined $_[0]->attr('href') && $_[0]->attr('href') =~ /(dm\.html|dplay\.php)/ } ) ) {
                 local $\ = "\n";
-                $link->attr('href') =~ /file=(.+)/;
-                my $u = "http://www.dailymotion.com/video/$1";
+                $link->attr('href') =~ /(file|docid)=(.+)/;
+                my $u = "http://www.dailymotion.com/video/$2";
 
                 $sth_ins->execute( $s, $date->strftime('%F'), $u, 'now' );
             }
