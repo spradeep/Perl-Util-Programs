@@ -74,11 +74,11 @@ foreach my $s ( keys %urls ) {
                 $link->attr('href') =~ /file=(.+)/;
                 my $u = "http://www.dailymotion.com/video/$1";
 
-				$sth_ins->execute($s,$date->strftime('%F'),$u,'now');
+                $sth_ins->execute( $s, $date->strftime('%F'), $u, 'now' );
             }
         }
 
-		$dbh->commit;
+        $dbh->commit;
     }
 }
 
