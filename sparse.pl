@@ -31,7 +31,7 @@ if ($@) {
 
 my $mech = WWW::Mechanize->new( onerror => sub { carp @_; } );
 my $dbh = DBI->connect( 'dbi:SQLite:dbname=ssl.db', undef, undef, { AutoCommit => 0 } );
-my $sth_ins = $dbh->prepare(q[INSERT INTO episode_list(serial_code, episode_date, url , dt_added) VALUES(?,?,?,?)]);
+my $sth_ins = $dbh->prepare(q[INSERT INTO episode_list(serial_code, episode_date, url , dt_added) VALUES(?,?,?,DATETIME(?))]);
 
 my %urls = map { $_ => [ $serial_urls{$_} ] } keys %serial_urls;
 
@@ -77,6 +77,8 @@ foreach my $s ( keys %urls ) {
 				$sth_ins->execute($s,$date->strftime('%F'),$u,'now');
             }
         }
+
+		$dbh->commit;
     }
 }
 
