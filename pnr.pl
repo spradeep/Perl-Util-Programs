@@ -10,12 +10,20 @@ use constant {
     CHART_NOT_PREPARED => 0
 };
 
+$SIG{__DIE__} = sub {
+	use Devel::StackTrace;
+
+	my $s = Devel::StackTrace->new;
+
+	print $s->as_string;
+};
+
 my $class_struct = {};
 my $pnr          = param('pnr');
-my ( $pnrno1, $pnrno2 ) = $pnr =~ /(\d{3})(\d{7})/;
+my ( $pnrno1 ) = $pnr;
 
 print header();
-print start_html( -title => "$pnrno1-$pnrno2" );
+print start_html( -title => "$pnrno1" );
 
 ## different layout & info of Indian Railway class
 $class_struct->{'2A'} = {
@@ -36,11 +44,13 @@ $class_struct->{'3A'}->{max_seats} = 64;    ## max is different
 my $mech = WWW::Mechanize->new( onerror => sub { warn @_; } );
 $mech->agent_alias('Windows IE 6');
 
-$mech->get("http://www.indianrail.gov.in/pnr_stat.html");
+$mech->add_header( Referer => 'http://www.indianrail.gov.in/index.html');
+$mech->get("http://www.indianrail.gov.in/pnr_Enq.html");
+$mech->delete_header( 'Referer' );
 
 $mech->submit_form(
     form_name => 'pnr_stat',
-    fields    => { lccp_pnrno1 => "$pnrno1", lccp_pnrno2 => "$pnrno2" },
+    fields    => { lccp_pnrno1 => "$pnrno1" },
     button    => 'submitpnr'
 );
 
